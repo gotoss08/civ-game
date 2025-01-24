@@ -56,16 +56,18 @@ void initGame(Engine* engine) {
 	map.tiles = (Tile**) malloc(sizeof(Tile*) * map.height);
 
 	for (int y = 0; y < map.height; y++) {
-
 		map.tiles[y] = (Tile*) malloc(sizeof(Tile) * map.width);
-
 		for (int x = 0; x < map.width; x++) {
 			map.tiles[y][x].type = TileType_Terrain;
 		}
-
 	}
 
-	map.tiles[0][0].type = TileType_MetalOre;
+	int chunkSize = 3;
+	for (int y = map.height / 2 - chunkSize; y < map.height / 2 + chunkSize; y++) {
+		for (int x = map.width / 2 - chunkSize; x < map.width / 2 + chunkSize; x++) {
+			map.tiles[y][x].type = TileType_MetalOre;
+		}
+	}
 
 	player.width = 32;
 	player.height = 32;
@@ -102,6 +104,27 @@ void updateGame(Engine* engine) {
 		cameraTarget = Vector2Add(cameraDragStartPos, mouseDraggedDistance);
 	}
 
+	const float cameraSpeed = 15;
+
+	if (IsKeyDown(KEY_W)) {
+		cameraTarget.y -= cameraSpeed;
+	}
+	if (IsKeyDown(KEY_S)) {
+		cameraTarget.y += cameraSpeed;
+	}
+	if (IsKeyDown(KEY_A)) {
+		cameraTarget.x -= cameraSpeed;
+	}
+	if (IsKeyDown(KEY_D)) {
+		cameraTarget.x += cameraSpeed;
+	}
+
+	float wheelMoveScale = 5;
+	Vector2 wheelMove = GetMouseWheelMoveV();
+	wheelMove = Vector2Scale(wheelMove, wheelMoveScale);
+
+	cameraTarget = Vector2Add(cameraTarget, wheelMove);
+
 	cameraLerpedTarget = Vector2Lerp(cameraLerpedTarget, cameraTarget, 0.1f);
 	camera.target = cameraLerpedTarget;
 
@@ -122,10 +145,23 @@ void renderGame(Engine* engine) {
 
 			Color tileColor = (Color) { 100, 100, 100, 255 };
 			Rectangle tileRect = (Rectangle) { x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE };
+
+			if (tile->type == TileType_MetalOre) {
+				const int gap = 7;
+				Rectangle innerRect = tileRect;
+				innerRect.x += gap;
+				innerRect.y += gap;
+				innerRect.width -= gap * 2;
+				innerRect.height -= gap * 2;
+				tileColor = RED;
+				DrawRectangleRec(innerRect, tileColor);
+			}
+
 			if (CheckCollisionPointRec(mouseWorldPos, tileRect)) {
 				tileColor = ColorBrightness(tileColor, 1.0f);
-				if (tile->type == TileType_MetalOre) tileColor = RED;
+				/* tileColor = ColorContrast(tileColor, 1.0f); */
 			}
+
 			DrawRectangleLinesEx(tileRect, 2, tileColor);
 
 		}
