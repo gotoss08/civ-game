@@ -14,7 +14,7 @@ endif
 SOURCES = src/main.c src/engine.c src/game.c
 
 # Header files
-HEADERS = src/engine.h src/game.h
+HEADERS = src/engine.h src/game.h src/astar.h
 
 # Object files (generated in the build directory)
 OBJECTS = $(patsubst src/%.c, build/%.o, $(SOURCES))

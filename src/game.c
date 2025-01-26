@@ -2,6 +2,10 @@
 #include "game.h"
 #include "raylib.h"
 #include "raymath.h"
+#include <math.h>
+
+#define ASTAR_IMPLEMENTATION
+#include "astar.h"
 
 #define EXPAND_VARS(engine) Game* game = engine->game;GameData* data = (GameData*) game->gameData;(void)engine;(void)game;(void)data;
 
@@ -20,6 +24,10 @@ bool mouseDragging = false;
 Vector2 mouseDragStartPos = {0};
 Vector2 cameraDragStartPos = {0};
 
+Path path = {0};
+Vector2 startPath = {0};
+Vector2 endPath = {0};
+
 Map* createMap(int width, int height) {
 
 	Map* map = malloc(sizeof(Map));
@@ -35,7 +43,6 @@ Map* createMap(int width, int height) {
 GameData* createGameData() {
 
 	GameData* gd = malloc(sizeof(GameData));
-	gd->test = 69;
 
 	return gd;
 
@@ -58,14 +65,14 @@ void initGame(Engine* engine) {
 	for (int y = 0; y < map.height; y++) {
 		map.tiles[y] = (Tile*) malloc(sizeof(Tile) * map.width);
 		for (int x = 0; x < map.width; x++) {
-			map.tiles[y][x].type = TileType_Terrain;
+			map.tiles[y][x].type = TILE_GROUND;
 		}
 	}
 
 	int chunkSize = 3;
 	for (int y = map.height / 2 - chunkSize; y < map.height / 2 + chunkSize; y++) {
 		for (int x = map.width / 2 - chunkSize; x < map.width / 2 + chunkSize; x++) {
-			map.tiles[y][x].type = TileType_MetalOre;
+			map.tiles[y][x].type = TILE_ORE;
 		}
 	}
 
@@ -80,6 +87,10 @@ void initGame(Engine* engine) {
 	cameraTarget = (Vector2) { engine->windowWidth / 2.0f, engine->windowHeight / 2.0f };
 	cameraLerpedTarget = cameraTarget;
 
+	//
+
+	path = aStar(&map, 0, 0, 10, 10);
+
 }
 
 void updateGame(Engine* engine) {
@@ -89,10 +100,30 @@ void updateGame(Engine* engine) {
 	mousePos = GetMousePosition();
 	mouseWorldPos = GetScreenToWorld2D(mousePos, camera);
 
+	bool recalculatePath = false;
+
 	if (IsMouseButtonPressed(0)) {
+
 		mouseDragging = true;
 		mouseDragStartPos = mousePos;
 		cameraDragStartPos = cameraTarget;
+
+		startPath = mouseWorldPos;
+		recalculatePath = true;
+
+	}
+
+	if (IsMouseButtonPressed(1)) {
+		endPath = mouseWorldPos;
+		recalculatePath = true;
+	}
+
+	if (recalculatePath) {
+		int startx = floorf(startPath.x / TILE_SIZE);
+		int starty = floorf(startPath.y / TILE_SIZE);
+		int endx = endPath.x / TILE_SIZE;
+		int endy = endPath.y / TILE_SIZE;
+		path = aStar(&map, startx, starty, endx, endy);
 	}
 
 	if (IsMouseButtonReleased(0)) {
@@ -146,7 +177,7 @@ void renderGame(Engine* engine) {
 			Color tileColor = (Color) { 100, 100, 100, 255 };
 			Rectangle tileRect = (Rectangle) { x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE };
 
-			if (tile->type == TileType_MetalOre) {
+			if (tile->type == TILE_ORE) {
 				const int gap = 7;
 				Rectangle innerRect = tileRect;
 				innerRect.x += gap;
@@ -176,6 +207,18 @@ void renderGame(Engine* engine) {
 	DrawRectangle(100, 100, 100, 100, BLUE);
 	DrawRectangleRec(player, RED);
 
+	if (path.size > 0) {
+		for (int i = 0; i < path.size; i++) {
+			int x = path.x[i];
+			int y = path.y[i];
+			int gap = 5;
+			Vector2 worldPos = { x * TILE_SIZE + gap, y * TILE_SIZE + gap };
+			DrawRectangle(worldPos.x, worldPos.y, TILE_SIZE - gap * 2, TILE_SIZE - gap * 2, YELLOW);
+			const char* text = TextFormat("%d,%d", x, y);
+			DrawText(text, worldPos.x, worldPos.y, 12, BLACK);
+		}
+	}
+
 	EndMode2D();
 
 }
@@ -190,4 +233,18 @@ Game createGame() {
 	game.render = &renderGame;
 
 	return game;
+}
+
+const Tile* getTile(const Map* map, const int x, const int y) {
+	return &map->tiles[y][x];
+}
+
+const TileAttributes tileAttributes[TILE_TYPE_COUNT] = {
+    [TILE_GROUND] = {.solid = false, .movementCost = 1},
+    [TILE_ORE]	  = {.solid = true, .movementCost = 2},
+};
+
+const TileAttributes *getTileAttributes(const Map *map, const int x,
+                                        const int y) {
+	return &tileAttributes[getTile(map, x, y)->type];
 }
