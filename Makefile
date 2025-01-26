@@ -1,14 +1,14 @@
-RAYLIB_PATH = c:/code/_libs/raylib-5.5_win64_mingw-w64
+PLATFORM ?= LINUX
 
-CC = gcc
-PLATFORM := $(shell uname)
-
-ifeq (, $(findstring mingw, $(PLATFORM)))
+ifeq ($(PLATFORM),WSL2)
+	RAYLIB_PATH = /mnt/c/code/_libs/raylib-5.5_win64_mingw-w64
+	CC = x86_64-w64-mingw32-gcc
 	CFLAGS = -Wall -Wextra -pedantic -I$(RAYLIB_PATH)/include
 	LINKER_FLAGS = -L$(RAYLIB_PATH)/lib -lraylib -lgdi32 -lwinmm
 else
-	CFLAGS = -Wall -Wextra -pedantic `pkg-config --cflags raylib`
-	LINKER_FLAGS = `pkg-config raylib --libs`
+	CC = gcc
+	CFLAGS = -Wall -Wextra -pedantic
+	LINKER_FLAGS = -lraylib -lm -lGL
 endif
 
 # List of source files
