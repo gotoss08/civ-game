@@ -5,6 +5,11 @@ ifeq ($(PLATFORM),WSL2)
 	CC = x86_64-w64-mingw32-gcc
 	CFLAGS = -Wall -Wextra -pedantic -I$(RAYLIB_PATH)/include
 	LINKER_FLAGS = -L$(RAYLIB_PATH)/lib -lraylib -lgdi32 -lwinmm
+else ifeq ($(PLATFORM),WINDOWS)
+	RAYLIB_PATH = c:/code/_libs/raylib-5.5_win64_mingw-w64
+	CC = gcc
+	CFLAGS = -Wall -Wextra -pedantic -I$(RAYLIB_PATH)/include
+	LINKER_FLAGS = -L$(RAYLIB_PATH)/lib -lraylib -lgdi32 -lwinmm
 else
 	CC = gcc
 	CFLAGS = -Wall -Wextra -pedantic
